@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"time"
 )
 
 type document struct {
@@ -13,28 +14,28 @@ type document struct {
 	ID    int
 }
 
-func loadDocuments(path string) ([]document, error) {
-	f, err := os.Open(path)
+func loadDocuments(filename string) ([]document, error) {
+	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	dec := xml.NewDecoder(f)
 	dump := struct {
 		Documents []document `xml:"doc"`
 	}{}
 
+	start := time.Now()
+	dec := xml.NewDecoder(f)
 	if err := dec.Decode(&dump); err != nil {
 		return nil, err
 	}
+	fmt.Println("time to decode the xml file", time.Since(start))
 
 	docs := dump.Documents
 	for i := range docs {
 		docs[i].ID = i
 	}
-
-	fmt.Println("read document")
 
 	return docs, nil
 }
