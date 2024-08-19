@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -10,28 +10,48 @@ import (
 )
 
 func main() {
-	// forceRead := flag.Bool("forceRead", false, "force to read the wiki data file")
+	forceRead := flag.Bool("forceRead", false, "force to read the wiki data file")
 	deleteBackup := flag.Bool("recreateBackup", false, "recrete the index backup")
 	flag.Parse()
 
-	docs, err := loadDocuments("./enwiki-latest-abstract1.xml")
+	idx, err := createIdx("./enwiki-latest-abstract1.xml", *forceRead)
 	if err != nil {
 		log.Panic(err)
 	}
-
-	idx := make(index)
-	idx.add(docs)
 
 	err = createBackup(idx, *deleteBackup)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	res := idx.search("small wild cat")
-	for _, i := range res {
-		fmt.Println(docs[i])
+	// res := idx.search("small wild cat")
+	// for _, i := range res {
+	// 	fmt.Println(docs[i])
+	// }
+}
+
+func createIdx(filename string, forceRead bool) (index, error) {
+	engine, err := persistency.NewEngine("backup.txt")
+	if err != nil {
+		return nil, err
 	}
 
+	_, fileStatErr := os.Stat("backup.txt")
+
+	if !errors.Is(fileStatErr, os.ErrNotExist) && !forceRead {
+		_, backup := engine.GetMapFromFile()
+		return backup, nil
+	}
+
+	docs, err := loadDocuments(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	idx := make(index)
+	idx.add(docs)
+
+	return idx, nil
 }
 
 func createBackup(idx index, deleteBkpFile bool) error {
@@ -53,6 +73,8 @@ func createBackup(idx index, deleteBkpFile bool) error {
 			return err
 		}
 	}
+
+	engine.Restore()
 
 	return nil
 }
